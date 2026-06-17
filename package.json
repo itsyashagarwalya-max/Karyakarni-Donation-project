@@ -1,0 +1,14 @@
+{
+  "name": "kaaryakarni-donation-management-system-inr",
+  "version": "4.0.0",
+  "description": "Enterprise Multi-page Donation Management System in INR with OTP workflows, Member Dashboards, and 2FA Admin Panel",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "mysql2": "^3.6.5",
+    "cors": "^2.8.5"
+  }
+}

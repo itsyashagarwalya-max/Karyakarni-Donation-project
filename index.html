@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kaaryakarni - Donation Management System</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        :root {
+            --primary: #0ea5e9;
+            --primary-dark: #0284c7;
+            --bg-main: #f8fafc;
+            --surface: #ffffff;
+            --text-dark: #0f172a;
+            --text-muted: #64748b;
+            --error: #ef4444;
+            --success: #22c55e;
+            --radius-lg: 16px;
+            --radius-md: 8px;
+            --shadow: 0 12px 30px -5px rgba(15, 23, 42, 0.05);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; }
+        body { background-color: var(--bg-main); color: var(--text-dark); min-height: 100vh; display: flex; flex-direction: column; }
+
+        /* Multi-page Dynamic Router Interceptors displays controls layout definitions */
+        .spa-page-route { display: none; flex-direction: column; flex-grow: 1; animation: smoothFadeIn 0.2s ease-in-out; }
+        .spa-page-route.active { display: flex; }
+        @keyframes smoothFadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+        .container { max-width: 1200px; margin: 0 auto; padding: 0 30px; width: 100%; }
+
+        /* Global Dynamic Buttons formatting modules */
+        .btn { padding: 11px 22px; font-size: 14px; font-weight: 600; border-radius: var(--radius-md); cursor: pointer; transition: all 0.2s ease-in-out; border: none; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+        .btn-primary { background-color: var(--primary); color: #fff; box-shadow: 0 4px 12px rgba(14, 165, 233, 0.2); }
+        .btn-primary:hover { background-color: var(--primary-dark); transform: translateY(-1px); }
+        .btn-outline { background: transparent; color: var(--text-dark); border: 1px solid #e2e8f0; }
+        .btn-outline:hover { background-color: #f1f5f9; border-color: #cbd5e1; }
+
+        /* Navigation elements layout grids wrapper mapping formatting */
+        .navbar { background: var(--surface); padding: 20px 0; border-bottom: 1px solid #f1f5f9; }
+        .nav-flex { display: flex; justify-content: space-between; align-items: center; }
+        .brand-logo { font-size: 26px; font-weight: 800; color: var(--text-dark); text-decoration: none; }
+        .brand-logo span { color: var(--primary); }
+        .action-tray { display: flex; align-items: center; gap: 24px; }
+        .tray-item { display: flex; align-items: center; gap: 8px; }
+        .tray-txt { font-size: 13px; color: var(--text-muted); font-weight: 500; }
+
+        /* Core presentation hero content details grid layers styling rules maps */
+        .hero { flex-grow: 1; display: flex; align-items: center; padding: 60px 0; }
+        .hero-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 60px; align-items: center; }
+        .hero-text h1 { font-size: 46px; font-weight: 800; line-height: 1.15; margin-bottom: 20px; }
+        .hero-text p { font-size: 18px; line-height: 1.6; color: var(--text-muted); margin-bottom: 30px; }
+        .hero-art { background: linear-gradient(135deg, #0ea5e9 0%, #2563eb 100%); height: 320px; border-radius: var(--radius-lg); box-shadow: 0 20px 40px rgba(37, 99, 235, 0.2); padding: 40px; display: flex; align-items: flex-end; color: #fff; }
+
+        /* Fixed Anchor layout definition at Right-Bottom targeting Admin access profiles */
+        .btn-admin-bottom-right { position: fixed; bottom: 30px; right: 30px; background: #1e293b; color: #fff; padding: 12px 24px; border-radius: 50px; font-size: 13px; font-weight: 600; box-shadow: 0 10px 25px rgba(0,0,0,0.1); z-index: 99999; text-transform: uppercase; letter-spacing: 0.5px; }
+        .btn-admin-bottom-right:hover { background: var(--text-dark); transform: translateY(-2px); }
+
+        /* Modal Overlay System styling layouts mappings controllers */
+        .modal-mask { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.3); backdrop-filter: blur(4px); display: none; justify-content: center; align-items: center; z-index: 9999; }
+        .modal-mask.active { display: flex; }
+        .modal-window { background: var(--surface); padding: 35px; border-radius: var(--radius-lg); width: 100%; max-width: 460px; box-shadow: 0 20px 40px rgba(0,0,0,0.1); position: relative; }
+        .modal-close { position: absolute; top: 20px; right: 20px; background: none; border: none; font-size: 24px; cursor: pointer; color: var(--text-muted); }
+        .modal-window h2 { font-weight: 800; font-size: 22px; margin-bottom: 8px; }
+        .modal-subtitle { font-size: 14px; color: var(--text-muted); margin-bottom: 20px; }
+
+        .form-field-item { margin-bottom: 16px; }
+        .form-field-item label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; color: #475569; }
+        .form-field-item input { width: 100%; padding: 11px 14px; border: 1px solid #cbd5e1; border-radius: var(--radius-md); font-size: 14px; outline: none; }
+        .form-field-item input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.15); }
+        
+        /* Validation labels tracking rules inputs checks */
+        .error-alert-label { color: var(--error); font-size: 12px; font-weight: 500; margin-top: 4px; display: none; }
+        .otp-display-enclosure-box { background: #f8fafc; border: 1px dashed #cbd5e1; padding: 15px; border-radius: var(--radius-md); margin-top: 15px; display: none; }
+        .otp-terminal-hint { font-size: 12px; color: var(--success); font-weight: 600; margin-top: 4px; font-family: monospace; }
+
+        /* Dashboard interface architecture styling panels context */
+        .dashboard-navbar { background: var(--surface); padding: 18px 0; border-bottom: 1px solid #f1f5f9; }
+        .db-nav-flex { display: flex; justify-content: space-between; align-items: center; }
+        .welcome-badge { font-size: 15px; color: var(--text-muted); }
+        .welcome-badge strong { font-size: 20px; color: var(--text-dark); margin-left: 4px; }
+        .dashboard-workspace { flex-grow: 1; display: flex; justify-content: center; align-items: center; padding: 60px 0; }
+        .action-hero-card { background: var(--surface); padding: 50px 40px; border-radius: var(--radius-lg); box-shadow: var(--shadow); max-width: 480px; width: 100%; text-align: center; }
+        .action-hero-card h2 { margin-bottom: 10px; font-weight: 800; }
+        .action-hero-card p { color: var(--text-muted); font-size: 15px; margin-bottom: 30px; }
+
+        /* Success operational screens style elements rules */
+        .success-panel { background: var(--surface); padding: 50px 40px; border-radius: var(--radius-lg); box-shadow: var(--shadow); max-width: 520px; width: 100%; text-align: center; margin: auto; }
+        .icon-round-check { width: 64px; height: 64px; background: #f0fdf4; color: var(--success); border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 28px; margin-bottom: 20px; font-weight: bold; }
+        .success-panel h1 { font-size: 30px; font-weight: 800; margin-bottom: 10px; }
+        .success-panel p { color: var(--text-muted); font-size: 15px; margin-bottom: 20px; }
+        .live-timestamp-box { background: #f8fafc; border: 1px dashed #e2e8f0; padding: 12px; font-family: monospace; font-size: 13px; color: #475569; border-radius: var(--radius-md); margin-bottom: 30px; }
+
+        /* Admin views workspace layouts grids definitions variables mapping styles */
+        .admin-workspace-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-top: 40px; }
+        .admin-data-card { background: var(--surface); border-radius: var(--radius-lg); padding: 30px; box-shadow: var(--shadow); border: 1px solid #f1f5f9; }
+        .admin-data-card h3 { font-size: 18px; font-weight: 700; margin-bottom: 20px; border-bottom: 2px solid var(--bg-main); padding-bottom: 10px; }
+        .data-table-container { max-height: 400px; overflow-y: auto; }
+        table { width: 100%; border-collapse: collapse; text-align: left; font-size: 13px; }
+        th { background: #f8fafc; padding: 10px; font-weight: 600; color: #475569; }
+        td { padding: 10px; border-bottom: 1px solid #f1f5f9; color: #1e293b; }
+
+        @media(max-width: 992px) { .hero-layout { grid-template-columns: 1fr; text-align: center; } .hero-art { display: none; } .action-tray { gap: 10px; } .admin-workspace-grid { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+
+    <div id="route-landing" class="spa-page-route active">
+        <nav class="navbar">
+            <div class="container nav-flex">
+                <a href="#" class="brand-logo" onclick="location.reload()">Kaarya<span>karni</span></a>
+                <div class="action-tray">
+                    <div class="tray-item">
+                        <span class="tray-txt">New Member</span>
+                        <button class="btn btn-outline" onclick="triggerAppModalOpen('signup')">Sign up</button>
+                    </div>
+                    <div class="tray-item">
+                        <span class="tray-txt">Existing member</span>
+                        <button class="btn btn-outline" onclick="triggerAppModalOpen('signin')">signin</button>
+                    </div>
+                    <div class="tray-item">
+                        <span class="tray-txt">Donate Now</span>
+                        <button class="btn btn-primary" onclick="triggerAppModalOpen('donate')">Donate</button>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <main class="hero">
+            <div class="container hero-layout">
+                <div class="hero-text">
+                    <h1>Sow the Seeds of Transparent Kindness</h1>
+                    <p>Kaaryakarni is a robust donation management platform engineered to deliver financial transparency. Support national and worldwide humanitarian programs securely using verified instant multi-channel INR routes today.</p>
+                    <button class="btn btn-primary" style="padding: 14px 28px;" onclick="triggerAppModalOpen('donate')">Donate Now (INR ₹)</button>
+                </div>
+                <div class="hero-art">
+                    <div>
+                        <h3 style="font-size: 22px; font-weight:700; margin-bottom: 10px;">Direct Impact Accounting</h3>
+                        <p style="color: rgba(255,255,255,0.85); font-size: 14px; line-height: 1.5;">Every contribution is validated cleanly and mapped onto immutable internal databases to secure prompt, transparent allocations deployment tracking.</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <button class="btn btn-admin-bottom-right" onclick="triggerAppModalOpen('admin')">Admin Console</button>
+    </div>
+
+
+    <div id="app-modal-mask" class="modal-mask">
+        
+        <div id="box-modal-signup" class="modal-window" style="display: none;">
+            <button class="modal-close" onclick="triggerAppModalsClose()">&times;</button>
+            <h2>Create Member Profile</h2>
+            <p class="modal-subtitle">Complete identity profile details below to spin up your donor tracking workspace accounts nodes.</p>
+            
+            <form onsubmit="executeMemberRegistrationForm(event)">
+                <div class="form-field-item">
+                    <label>First Name</label>
+                    <input type="text" id="su-firstname" placeholder="Enter first name" required>
+                </div>
+                <div class="form-field-item">
+                    <label>Last Name</label>
+                    <input type="text" id="su-lastname" placeholder="Enter last name" required>
+                </div>
+                <div class="form-field-item">
+                    <label>Email ID</label>
+                    <input type="email" id="su-email" placeholder="example@domain.com" required>
+                    <div id="err-su-email" class="error-alert-label">Invalid mail id</div>
+                </div>
+                <div class="form-field-item">
+                    <label>Mobile Number</label>
+                    <input type="tel" id="su-mobile" placeholder="10 digit target mobile number" required>
+                    <div id="err-su-mobile" class="error-alert-label">Invalid mobile number</div>
+                </div>
+
+                <div id="su-otp-display-box" class="otp-display-enclosure-box">
+                    <label style="color: var(--text-dark)">Enter 4-Digit Mobile OTP</label>
+                    <input type="text" id="su-otp-code-input" placeholder="----" maxlength="4">
+                    <div id="su-otp-terminal-hint" class="otp-terminal-hint"></div>
+                    <div id="err-su-otp" class="error-alert-label">Incorrect OTP Token entry value matching parameters.</div>
+                </div>
+
+                <div style="margin-top: 20px; display: flex; gap: 10px;">
+                    <button type="button" id="su-otp-trigger-btn" class="btn btn-outline" style="flex: 1;" onclick="fetchSmsOtpCodeNetwork('su-mobile', 'su-otp-display-box', 'su-otp-terminal-hint', 'su-register-submit-btn')">Send OTP</button>
+                    <button type="submit" id="su-register-submit-btn" class="btn btn-primary" style="flex: 1;" disabled>Register</button>
+                </div>
+            </form>
+        </div>
+
+        <div id="box-modal-signin" class="modal-window" style="display: none;">
+            <button class="modal-close" onclick="triggerAppModalsClose()">&times;</button>
+            <h2>Member Authentication</h2>
+            <p class="modal-subtitle">Provide your 10-digit mobile number to request a secure access token verification pass.</p>
+            
+            <form onsubmit="executeMemberSignInVerificationForm(event)">
+                <div class="form-field-item">
+                    <label>Registered Mobile Number</label>
+                    <input type="tel" id="si-mobile" placeholder="Enter 10 digit number" required>
+                    <div id="err-si-mobile" class="error-alert-label">Invalid mobile number</div>
+                </div>
+
+                <div id="si-otp-display-box" class="otp-display-enclosure-box">
+                    <label style="color: var(--text-dark)">One-Time OTP Code Access Token</label>
+                    <input type="text" id="si-otp-code-input" placeholder="----" maxlength="4">
+                    <div id="si-otp-terminal-hint" class="otp-terminal-hint"></div>
+                    <div id="err-si-otp" class="error-alert-label">Incorrect OTP Code. Authentication failed.</div>
+                </div>
+
+                <div style="margin-top: 20px; display: flex; flex-direction: column; gap: 10px;">
+                    <button type="button" id="si-otp-trigger-btn" class="btn btn-outline" onclick="fetchSmsOtpCodeNetwork('si-mobile', 'si-otp-display-box', 'si-otp-terminal-hint', 'si-submit-btn')">Send OTP</button>
+                    <button type="submit" id="si-submit-btn" class="btn btn-primary" disabled>Verify and Sign In</button>
+                </div>
+            </form>
+        </div>
+
+        <div id="box-modal-donate" class="modal-window" style="display: none;">
+            <button class="modal-close" onclick="triggerAppModalsClose()">&times;</button>
+            <h2>Please fill the details below:</h2>
+            <p class="modal-subtitle">Configure your dynamic direct-track allocation details safely below.</p>
+            
+            <form onsubmit="executeGuestDonationProcessingForm(event)">
+                <div class="form-field-item">
+                    <label>Full Name</label>
+                    <input type="text" id="do-fullname" placeholder="Enter full name" required>
+                </div>
+                <div class="form-field-item">
+                    <label>Email ID</label>
+                    <input type="email" id="do-email" placeholder="name@domain.com" required>
+                    <div id="err-do-email" class="error-alert-label">Invalid mail id</div>
+                </div>
+                <div class="form-field-item">
+                    <label>Mobile Number</label>
+                    <input type="tel" id="do-mobile" placeholder="10 digit active phone number" required>
+                    <div id="err-do-mobile" class="error-alert-label">Invalid mobile number</div>
+                </div>
+                <div class="form-field-item">
+                    <label>Donation Value Amount (INR ₹)</label>
+                    <input type="number" id="do-amount" value="5000" min="10" required>
+                </div>
+
+                <div id="do-otp-display-box" class="otp-display-enclosure-box">
+                    <label style="color: var(--text-dark)">Secure Authorization Transaction OTP</label>
+                    <input type="text" id="do-otp-code-input" placeholder="----" maxlength="4">
+                    <div id="do-otp-terminal-hint" class="otp-terminal-hint"></div>
+                    <div id="err-do-otp" class="error-alert-label">Incorrect verification token matching arrays.</div>
+                </div>
+
+                <div style="margin-top: 20px; display: flex; flex-direction: column; gap: 10px;">
+                    <button type="button" id="do-otp-trigger-btn" class="btn btn-outline" onclick="fetchSmsOtpCodeNetwork('do-mobile', 'do-otp-display-box', 'do-otp-terminal-hint', 'do-submit-btn')">Send OTP</button>
+                    <button type="submit" id="do-submit-btn" class="btn btn-primary" disabled>Donate Now</button>
+                </div>
+            </form>
+        </div>
+
+        <div id="box-modal-admin" class="modal-window" style="display: none;">
+            <button class="modal-close" onclick="triggerAppModalsClose()">&times;</button>
+            <h2>Admin Security Entry</h2>
+            <p class="modal-subtitle">Provide clearance keys matching system control directories protocols.</p>
+            
+            <form id="admin-password-phase-form" onsubmit="executeAdminIdentityPasswordVerification(event)">
+                <div class="form-field-item">
+                    <label>Mail ID / Mobile Number Text</label>
+                    <input type="text" id="ad-identity-field" placeholder="admin@kaaryakarni.org" required>
+                </div>
+                <div class="form-field-item">
+                    <label>Account Passphrase</label>
+                    <input type="password" id="ad-password-field" placeholder="••••••••••••" required>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 6px;">Verify Security Credentials</button>
+            </form>
+
+            <form id="admin-2fa-phase-form" onsubmit="executeAdminTwoFactorAuthenticationSubmit(event)" style="display: none; margin-top: 15px;">
+                <div style="background: #fffdf5; border: 1px dashed #f59e0b; padding: 16px; border-radius: var(--radius-md);">
+                    <label style="font-weight: 700; display: block; font-size: 13px; margin-bottom: 6px; color:#9a3412;">Two-Factor (2FA) Code Verification</label>
+                    <input type="text" id="ad-2fa-token-input" placeholder="Enter 6 digit 2FA code" maxlength="6" style="width: 100%; padding: 11px; border-radius: var(--radius-md); border: 1px solid #cbd5e1; outline: none; font-size:14px;" required>
+                    <div id="ad-2fa-terminal-hint" class="otp-terminal-hint" style="color: #b45309; margin-top: 6px;"></div>
+                    <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 14px; background: #1e293b;">Authenticate 2FA Token</button>
+                </div>
+            </form>
+        </div>
+
+    </div>
+
+
+    <div id="route-dashboard" class="spa-page-route">
+        <header class="dashboard-navbar">
+            <div class="container db-nav-flex">
+                <div class="welcome-badge">
+                    Welcome,<strong id="label-user-display-fullname">First Last</strong>
+                </div>
+                <button class="btn btn-outline" onclick="alert('Profile configuration data parameters compiled.')">Profile update</button>
+            </div>
+        </header>
+
+        <main class="dashboard-workspace">
+            <div class="action-hero-card">
+                <h2>Member Contribution Portal</h2>
+                <p>Initialize payment processing for standard membership tier values using secure encrypted pipelines inside India network arrays.</p>
+                <button class="btn btn-primary" style="padding: 16px 40px; font-size: 16px;" onclick="executeDashboardMemberPaymentProcessRoute()">Pay Now</button>
+            </div>
+        </main>
+    </div>
+
+
+    <div id="route-success" class="spa-page-route" style="justify-content: center; align-items: center;">
+        <div class="success-panel">
+            <div class="icon-round-check">&checkmark;</div>
+            <h1 id="success-header-label">payment successful</h1>
+            <p id="success-body-description">Transactional allocations metrics compiled and synced across core database records nodes safely.</p>
+            
+            <div id="success-timestamp-display-box" class="live-timestamp-box">--/--/---- --:--:--</div>
+
+            <button class="btn btn-primary" style="width: 100%; padding: 14px;" onclick="compileAndDownloadPdfStatementReceipt()">Download PDF Receipt</button>
+        </div>
+    </div>
+
+
+    <div id="route-admin-dashboard" class="spa-page-route" style="padding: 40px 0;">
+        <div class="container">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #e2e8f0; padding-bottom: 20px;">
+                <h2>🛡️ Kaaryakarni Audit Management & Control Dashboard</h2>
+                <button class="btn btn-outline" onclick="location.reload()">Terminate Admin Session</button>
+            </div>
+
+            <div class="admin-workspace-grid">
+                <div class="admin-data-card">
+                    <h3>Registered Workspace Members Database</h3>
+                    <div class="data-table-container">
+                        <table id="table-dom-members">
+                            <thead>
+                                <tr><th>Full Name Name</th><th>Email Identity Mapping</th><th>Mobile contact</th></tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="admin-data-card">
+                    <h3>INR (₹) Donations Financial Transaction Database</h3>
+                    <div class="data-table-container">
+                        <table id="table-dom-donations">
+                            <thead>
+                                <tr><th>Contributor Name</th><th>Contact Mail Reference</th><th>Value (INR)</th><th>Logged Timestamp</th></tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <script>
+        // Local Runtime Session Storage state machines
+        let activeUserSessionState = {
+            isAccountMemberType: false,
+            firstName: '',
+            lastName: '',
+            fullName: '',
+            emailId: '',
+            mobileNumber: '',
+            processedAmountInr: 0,
+            loggedTimestamp: ''
+        };
+
+        // Master Front-end dynamic routing module wrapper
+        function switchActiveSpaRouteView(routeTargetId) {
+            document.querySelectorAll('.spa-page-route').forEach(p => p.classList.remove('active'));
+            document.getElementById(routeTargetId).classList.add('active');
+            window.scrollTo(0, 0);
+        }
+
+        function triggerAppModalOpen(modalTypeKey) {
+            document.getElementById('app-modal-mask').classList.add('active');
+            document.getElementById('box-modal-signup').style.display = modalTypeKey === 'signup' ? 'block' : 'none';
+            document.getElementById('box-modal-signin').style.display = modalTypeKey === 'signin' ? 'block' : 'none';
+            document.getElementById('box-modal-donate').style.display = modalTypeKey === 'donate' ? 'block' : 'none';
+            document.getElementById('box-modal-admin').style.display = modalTypeKey === 'admin' ? 'block' : 'none';
+            
+            // Re-assert default layout visibility properties on form toggle initialization
+            document.getElementById('admin-password-phase-form').style.display = 'block';
+            document.getElementById('admin-2fa-phase-form').style.display = 'none';
+        }
+
+        function triggerAppModalsClose() {
+            document.getElementById('app-modal-mask').classList.remove('active');
+            document.querySelectorAll('.error-alert-label').forEach(e => e.style.display = 'none');
+            document.querySelectorAll('.otp-display-enclosure-box').forEach(e => e.style.display = 'none');
+        }
+
+        // Shared Client-Server Async SMS Code dispatcher interface
+        async function fetchSmsOtpCodeNetwork(phoneInputFieldId, displayEnclosureId, hintFieldNodeId, submitActionButtonId) {
+            const mobileNumberInput = document.getElementById(phoneInputFieldId).value.trim();
+            if(!/^\d{10}$/.test(mobileNumberInput)) {
+                alert("Please write a precise 10-digit numerical cell connection string profile prior to processing token generation requests.");
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/otp/request', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ targetPhone: mobileNumberInput })
+                });
+                const resultData = await response.json();
+
+                if (response.ok) {
+                    document.getElementById(displayEnclosureId).style.display = 'block';
+                    document.getElementById(hintFieldNodeId).innerText = `[Testing Code Tooltip Helper]: Key Dispatched -> ${resultData.activeTokenCode}`;
+                    document.getElementById(submitActionButtonId).removeAttribute('disabled');
+                    alert("One-Time Validation dynamic OTP sent! Read your backend terminal logging console trace window to capture the generation outputs key.");
+                } else {
+                    alert(resultData.error || "A gateway sync anomaly occurred trying to fetch access codes.");
+                }
+            } catch (err) { alert("Unable to establish proper synchronization handshake tracks with the token microservice."); }
+        }
+
+        // Form Process Action: Handle and commit New Member accounts creation workflows
+        async function executeMemberRegistrationForm(event) {
+            event.preventDefault();
+            document.getElementById('err-su-email').style.display = 'none';
+            document.getElementById('err-su-mobile').style.display = 'none';
+            document.getElementById('err-su-otp').style.display = 'none';
+
+            const firstName = document.getElementById('su-firstname').value.trim();
+            const lastName = document.getElementById('su-lastname').value.trim();
+            const emailId = document.getElementById('su-email').value.trim();
+            const mobileNumber = document.getElementById('su-mobile').value.trim();
+            const clientOtp = document.getElementById('su-otp-code-input').value.trim();
+
+            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailId)) return document.getElementById('err-su-email').style.display = 'block';
+            if (!/^\d{10}$/.test(mobileNumber)) return document.getElementById('err-su-mobile').style.display = 'block';
+
+            try {
+                const response = await fetch('/api/member/register-account', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ firstName, lastName, emailId, mobileNumber, clientOtp })
+                });
+                const resultData = await response.json();
+
+                if (response.ok) {
+                    hydrateRuntimeUserSessionStorage(resultData.member, true);
+                    triggerAppModalsClose();
+                    switchActiveSpaRouteView('route-dashboard'); // Redirect to Webpage 2 (Dashboard view)
+                } else {
+                    if (resultData.error.includes("OTP")) document.getElementById('err-su-otp').style.display = 'block';
+                    else alert(resultData.error);
+                }
+            } catch(ex) { alert("Registration execution failure encountered on server data streams synchronization."); }
+        }
+
+        // Form Process Action: Handle and verify existing Member profile authentication workflows
+        async function executeMemberSignInVerificationForm(event) {
+            event.preventDefault();
+            document.getElementById('err-si-mobile').style.display = 'none';
+            document.getElementById('err-si-otp').style.display = 'none';
+
+            const mobileNumber = document.getElementById('si-mobile').value.trim();
+            const clientOtp = document.getElementById('si-otp-code-input').value.trim();
+
+            if (!/^\d{10}$/.test(mobileNumber)) return document.getElementById('err-si-mobile').style.display = 'block';
+
+            try {
+                const response = await fetch('/api/member/signin-verify', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ mobileNumber, clientOtp })
+                });
+                const resultData = await response.json();
+
+                if (response.ok) {
+                    hydrateRuntimeUserSessionStorage(resultData.member, true);
+                    triggerAppModalsClose();
+                    switchActiveSpaRouteView('route-dashboard'); // Redirect to Webpage 2 (Dashboard view)
+                } else {
+                    if (resultData.error.includes("OTP")) document.getElementById('err-si-otp').style.display = 'block';
+                    else alert(resultData.error);
+                }
+            } catch(ex) { alert("Sign In authentication pipelines execution crashed."); }
+        }
+
+        // Form Process Action: Handle and write Guest Donation profiles with INR updates parameters
+        async function executeGuestDonationProcessingForm(event) {
+            event.preventDefault();
+            document.getElementById('err-do-email').style.display = 'none';
+            document.getElementById('err-do-mobile').style.display = 'none';
+            document.getElementById('err-do-otp').style.display = 'none';
+
+            const fullName = document.getElementById('do-fullname').value.trim();
+            const emailId = document.getElementById('do-email').value.trim();
+            const mobileNumber = document.getElementById('do-mobile').value.trim();
+            const amountInr = document.getElementById('do-amount').value.trim();
+            const clientOtp = document.getElementById('do-otp-code-input').value.trim();
+
+            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailId)) return document.getElementById('err-do-email').style.display = 'block';
+            if (!/^\d{10}$/.test(mobileNumber)) return document.getElementById('err-do-mobile').style.display = 'block';
+
+            try {
+                const response = await fetch('/api/donation/submit-transaction', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ fullName, emailId, mobileNumber, amountInr, clientOtp, bypassOtp: false })
+                });
+                const resultData = await response.json();
+
+                if (response.ok) {
+                    activeUserSessionState.isAccountMemberType = false;
+                    activeUserSessionState.fullName = resultData.donation.fullName;
+                    activeUserSessionState.emailId = resultData.donation.emailId;
+                    activeUserSessionState.processedAmountInr = resultData.donation.amountInr;
+                    activeUserSessionState.loggedTimestamp = resultData.donation.timestamp;
+
+                    // Requirements Layout formatting condition logic for Guest Donation workflow outcomes
+                    document.getElementById('success-header-label').innerText = "Thank You for the Donation";
+                    document.getElementById('success-body-description').innerText = "Your guest transactional donation records have been registered inside audit repositories.";
+                    document.getElementById('success-timestamp-display-box').innerText = `Processed Time: ${activeUserSessionState.loggedTimestamp}`;
+
+                    triggerAppModalsClose();
+                    switchActiveSpaRouteView('route-success'); // Redirect directly to Webpage 3 (Success screen)
+                } else {
+                    if (resultData.error.includes("OTP")) document.getElementById('err-do-otp').style.display = 'block';
+                    else alert(resultData.error);
+                }
+            } catch(ex) { alert("Donation pipeline communication routing failure encountered."); }
+        }
+
+        function hydrateRuntimeUserSessionStorage(memberModelObject, validationBooleanCheck) {
+            activeUserSessionState.isAccountMemberType = validationBooleanCheck;
+            activeUserSessionState.firstName = memberModelObject.firstName;
+            activeUserSessionState.lastName = memberModelObject.lastName;
+            activeUserSessionState.fullName = `${memberModelObject.firstName} ${memberModelObject.lastName}`;
+            activeUserSessionState.emailId = memberModelObject.emailId;
+            activeUserSessionState.mobileNumber = memberModelObject.mobileNumber;
+
+            // Direct inner text mapping into dynamic top left labels nodes
+            document.getElementById('label-user-display-fullname').innerText = activeUserSessionState.fullName;
+        }
+
+        // Dashboard Payment workflow execution pipeline with explicit INR ₹ modifications
+        async function executeDashboardMemberPaymentProcessRoute() {
+            activeUserSessionState.processedAmountInr = 1500; // Base Indian currency tier default parameters set
+            activeUserSessionState.loggedTimestamp = new Date().toLocaleString();
+
+            // Store directly to server system nodes database logs forcing automated pipeline authentication bypass flags
+            await fetch('/api/donation/submit-transaction', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    fullName: activeUserSessionState.fullName,
+                    emailId: activeUserSessionState.emailId,
+                    mobileNumber: activeUserSessionState.mobileNumber,
+                    amountInr: activeUserSessionState.processedAmountInr,
+                    bypassOtp: true
+                })
+            });
+
+            // Layout labels adjustments matching standard member checkout criteria
+            document.getElementById('success-header-label').innerText = "payment successful";
+            document.getElementById('success-body-description').innerText = "Your member profile funding allocation has been processed successfully.";
+            document.getElementById('success-timestamp-display-box').innerText = `Processed Time: ${activeUserSessionState.loggedTimestamp}`;
+
+            switchActiveSpaRouteView('route-success'); // Redirect directly to Webpage 3 (Success screen)
+        }
+
+        // Administrative Layer Phase 1 Submit verification handler
+        async function executeAdminIdentityPasswordVerification(event) {
+            event.preventDefault();
+            const identity = document.getElementById('ad-identity-field').value.trim();
+            const password = document.getElementById('ad-password-field').value.trim();
+
+            try {
+                const response = await fetch('/api/admin/gateway-pass', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ identity, password })
+                });
+                const resultData = await response.json();
+
+                if (response.ok) {
+                    document.getElementById('admin-password-phase-form').style.display = 'none';
+                    document.getElementById('admin-2fa-phase-form').style.display = 'block';
+                    document.getElementById('ad-2fa-terminal-hint').innerText = `[2FA Terminal Code Interceptor Monitor]: Key dispatched -> ${resultData.admin2faCode}`;
+                    alert("Credential match complete! Provide the secondary 2FA token security code read straight from terminal log captures to proceed.");
+                } else {
+                    alert(resultData.message || "Invalid administrative parameters deployed.");
+                }
+            } catch(ex) { alert("System exception parsing authorization workflows routes."); }
+        }
+
+        // Administrative Layer Phase 2 Submit verification handler
+        async function executeAdminTwoFactorAuthenticationSubmit(event) {
+            event.preventDefault();
+            const userToken2fa = document.getElementById('ad-2fa-token-input').value.trim();
+
+            try {
+                const response = await fetch('/api/admin/gateway-2fa', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userToken2fa })
+                });
+                const resultData = await response.json();
+
+                if (response.ok) {
+                    triggerAppModalsClose();
+                    renderDatabaseArraysIntoAdminTables(resultData.dataLog);
+                    switchActiveSpaRouteView('route-admin-dashboard'); // Transition cleanly into Page 4 layout blocks
+                } else {
+                    alert(resultData.message || "Authentication token failure matching registry parameters.");
+                }
+            } catch(ex) { alert("2FA infrastructure verification loops error mapping."); }
+        }
+
+        function renderDatabaseArraysIntoAdminTables(databaseLogsData) {
+            const memberTableDomBody = document.querySelector('#table-dom-members tbody');
+            const donationTableDomBody = document.querySelector('#table-dom-donations tbody');
+            
+            memberTableDomBody.innerHTML = '';
+            donationTableDomBody.innerHTML = '';
+
+            databaseLogsData.members.forEach(u => {
+                memberTableDomBody.innerHTML += `<tr><td>${u.firstName} ${u.lastName}</td><td>${u.emailId}</td><td>${u.mobileNumber}</td></tr>`;
+            });
+
+            databaseLogsData.donations.forEach(d => {
+                donationTableDomBody.innerHTML += `<tr><td>${d.fullName}</td><td>${d.emailId}</td><td><strong>₹${d.amountInr.toLocaleString('en-IN')}.00</strong></td><td>${d.timestamp}</td></tr>`;
+            });
+        }
+
+        // jsPDF Custom Vector compiler engine crafting statements dynamically in INR format
+        function compileAndDownloadPdfStatementReceipt() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+
+            // Layout header colored blocks decoration matrices definitions
+            doc.setFillColor(14, 165, 233);
+            doc.rect(0, 0, 210, 42, 'F');
+
+            doc.setTextColor(255, 255, 255);
+            doc.setFont("Helvetica", "bold");
+            doc.setFontSize(22);
+            doc.text("Kaaryakarni System Audit Receipt", 20, 26);
+
+            doc.setTextColor(15, 23, 42);
+            doc.setFontSize(14);
+            
+            // Branch statement text messages matching exact user session categorization contexts
+            if (activeUserSessionState.isAccountMemberType) {
+                // Condition Requirement: saying thankyou "First name + Last name". Your payment is successful
+                doc.text(`thankyou ${activeUserSessionState.firstName} ${activeUserSessionState.lastName}`, 20, 65);
+                doc.setFont("Helvetica", "normal");
+                doc.setFontSize(11);
+                doc.setTextColor(100, 116, 139);
+                doc.text("Your payment is successful and registered into corporate tracking node matrices.", 20, 75);
+            } else {
+                // Condition Requirement: has message saying Thankyou for the donation and should reflect donation amount
+                doc.text(`Thankyou for the donation, ${activeUserSessionState.fullName}`, 20, 65);
+                doc.setFont("Helvetica", "normal");
+                doc.setFontSize(11);
+                doc.setTextColor(100, 116, 139);
+                doc.text(`Your instant contribution transaction value was completely recorded across secure blocks.`, 20, 75);
+            }
+
+            doc.setDrawColor(226, 232, 240);
+            doc.line(20, 90, 190, 90);
+
+            // Audit Grid key-value details looping block mappings in Indian Rupee format
+            doc.setFont("Helvetica", "bold");
+            doc.setTextColor(15, 23, 42);
+            doc.setFontSize(12);
+            doc.text("Ledger Allocation Profile Specifics", 20, 105);
+
+            doc.setFont("Helvetica", "normal");
+            doc.text(`Target Entity Profile: ${activeUserSessionState.fullName}`, 20, 120);
+            doc.text(`Contact Track Channel ID: ${activeUserSessionState.emailId}`, 20, 130);
+            doc.text(`Donation Amount Reflected: INR Rs. ${activeUserSessionState.processedAmountInr.toLocaleString('en-IN')}.00/-`, 20, 140);
+            doc.text(`Donation Time Stamp: ${activeUserSessionState.loggedTimestamp}`, 20, 150);
+
+            doc.line(20, 165, 190, 165);
+            
+            doc.setFont("Helvetica", "italic");
+            doc.setFontSize(9);
+            doc.text("This electronic receipt document serves as true transaction validation inside Kaaryakarni records.", 20, 180);
+
+            // Save and prompt client system download file stream commands execution loops
+            doc.save(`Kaaryakarni_INR_Receipt_${activeUserSessionState.fullName.replace(/\s+/g, '_')}.pdf`);
+        }
+    </script>
+</body>
+</html>
