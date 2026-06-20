@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kaaryakarni - Donation Management System</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+</head>
+<body>
+
+    <div id="route-landing" class="spa-page-route active">
+        <nav class="navbar">
+            <div class="container nav-flex">
+                <a href="#" class="brand-logo" onclick="switchActiveSpaRouteView('route-landing')">
+                <div class="action-tray">
+                    <div class="tray-item">
+                        <button class="btn btn-outline" onclick="triggerAppModalOpen('signup')">New Member</button>
+                    </div>
+                    <div class="tray-item">
+                        <button class="btn btn-outline" onclick="triggerAppModalOpen('signin')">Member Login</button>
+                    </div>
+                    <div class="tray-item">
+                        <button class="btn btn-primary" onclick="triggerAppModalOpen('donate')">Donate Now</button>
+                    </div>
+                </div>
+            </div>
+        </nav>
+        <button class="btn btn-admin-bottom-right" onclick="triggerAppModalOpen('admin')">Admin Console</button>
+    </div>
+
+    <div id="app-modal-mask" class="modal-mask">
+        
+        <div id="box-modal-signup" class="modal-window" style="display: none;">
+            <button class="modal-close" onclick="triggerAppModalsClose()">&times;</button>
+            <h2>Member Registration</h2>
+            <form onsubmit="executeMemberRegistrationForm(event)">
+                <div class="form-field-item">
+                    <label>First Name</label>
+                    <input type="text" id="su-firstname" required>
+                </div>
+                <div class="form-field-item">
+                    <label>Last Name</label>
+                    <input type="text" id="su-lastname" required>
+                </div>
+                <div class="form-field-item">
+                    <label>Email ID</label>
+                    <input type="email" id="su-email" required>
+                    <div id="err-su-email" class="error-alert-label">Invalid email</div>
+                </div>
+                <div class="form-field-item">
+                    <label>Mobile Number</label>
+                    <input type="tel" id="su-mobile" required>
+                    <div id="err-su-mobile" class="error-alert-label">Invalid mobile</div>
+                </div>
+                <div id="su-otp-display-box" class="otp-display-enclosure-box">
+                    <input type="text" id="su-otp-code-input" placeholder="Enter 4-Digit OTP" maxlength="4">
+                    <div id="su-otp-terminal-hint" class="otp-terminal-hint"></div>
+                    <div id="err-su-otp" class="error-alert-label">Incorrect OTP</div>
+                </div>
+                <button type="button" onclick="fetchSmsOtpCodeNetwork('su-mobile', 'su-otp-display-box', 'su-otp-terminal-hint', 'su-register-submit-btn')">Send OTP</button>
+                <button type="submit" id="su-register-submit-btn" disabled>Register</button>
+            </form>
+        </div>
+
+        <div id="box-modal-signin" class="modal-window" style="display: none;">
+            <button class="modal-close" onclick="triggerAppModalsClose()">&times;</button>
+            <h2>Member Login</h2>
+            <form onsubmit="executeMemberSignInVerificationForm(event)">
+                <div class="form-field-item">
+                    <label>Mobile Number</label>
+                    <input type="tel" id="si-mobile" required>
+                    <div id="err-si-mobile" class="error-alert-label">Invalid mobile</div>
+                </div>
+                <div id="si-otp-display-box" class="otp-display-enclosure-box">
+                    <input type="text" id="si-otp-code-input" placeholder="Enter 4-Digit OTP" maxlength="4">
+                    <div id="si-otp-terminal-hint" class="otp-terminal-hint"></div>
+                    <div id="err-si-otp" class="error-alert-label">Incorrect OTP</div>
+                </div>
+                <button type="button" onclick="fetchSmsOtpCodeNetwork('si-mobile', 'si-otp-display-box', 'si-otp-terminal-hint', 'si-submit-btn')">Send OTP</button>
+                <button type="submit" id="si-submit-btn" disabled>Verify and Sign In</button>
+            </form>
+        </div>
+
+        <div id="box-modal-donate" class="modal-window" style="display: none;">
+            <button class="modal-close" onclick="triggerAppModalsClose()">&times;</button>
+            <h2>Donate Now</h2>
+            <form onsubmit="executeGuestDonationProcessingForm(event)">
+                <div class="form-field-item">
+                    <label>Full Name</label>
+                    <input type="text" id="do-fullname" required>
+                </div>
+                <div class="form-field-item">
+                    <label>Email ID</label>
+                    <input type="email" id="do-email" required>
+                    <div id="err-do-email" class="error-alert-label">Invalid email</div>
+                </div>
+                <div class="form-field-item">
+                    <label>Mobile Number</label>
+                    <input type="tel" id="do-mobile" required>
+                    <div id="err-do-mobile" class="error-alert-label">Invalid mobile</div>
+                </div>
+                <div class="form-field-item">
+                    <label>Amount (INR)</label>
+                    <input type="number" id="do-amount" value="5000">
+                </div>
+                <div id="do-otp-display-box" class="otp-display-enclosure-box">
+                    <input type="text" id="do-otp-code-input" placeholder="Enter 4-Digit OTP" maxlength="4">
+                    <div id="do-otp-terminal-hint" class="otp-terminal-hint"></div>
+                    <div id="err-do-otp" class="error-alert-label">Incorrect OTP</div>
+                </div>
+                <button type="button" onclick="fetchSmsOtpCodeNetwork('do-mobile', 'do-otp-display-box', 'do-otp-terminal-hint', 'do-submit-btn')">Send OTP</button>
+                <button type="submit" id="do-submit-btn" disabled>Donate Now</button>
+            </form>
+        </div>
+
+        <div id="box-modal-admin" class="modal-window" style="display: none;">
+            <button class="modal-close" onclick="triggerAppModalsClose()">&times;</button>
+            <h2>Admin Security Entry</h2>
+        </div>
+    </div>
+
+    <script type="module" src="js/app.js">
+	    // ADD IT HERE at the bottom of the script section:
+	    window.addEventListener('DOMContentLoaded', () => {
+	        const activePages = document.querySelectorAll('.spa-page-route.active');
+	        if (activePages.length === 0) {
+	            switchActiveSpaRouteView('route-landing');
+	        }
+	    });
+    </script>
+</body>
+</html>

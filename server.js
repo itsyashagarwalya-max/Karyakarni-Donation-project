@@ -1,16 +1,21 @@
 const express = require('express');
 const mysql = require('mysql2/promise');
 const cors = require('cors');
+const path = require('path'); // Add this import
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
+// This serves static files from the 'public' folder (or where your index.html is located)
+app.use(express.static(path.join(__dirname, 'public'))); 
+
+
 // Database Connection Configuration
 const dbConfig = {
     host: 'localhost',
     user: 'root',
-    password: 'Yash@2410', // Update with your MySQL password
+    password: 'Minty@0603', // Update with your MySQL password
     database: 'kaaryakarni_db'
 };
 
