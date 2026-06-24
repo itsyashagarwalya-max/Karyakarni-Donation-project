@@ -14,6 +14,9 @@
             <div class="container nav-flex">
                 <a href="#" class="brand-logo" onclick="switchActiveSpaRouteView('route-landing')">
                 <div class="action-tray">
+                		<div class="tray-item">
+                			<button class="btn btn-outline" onclick="triggerAppModalOpen('admin')">Admin Console</button>
+            		</div>
                     <div class="tray-item">
                         <button class="btn btn-outline" onclick="triggerAppModalOpen('signup')">New Member</button>
                     </div>
@@ -26,7 +29,21 @@
                 </div>
             </div>
         </nav>
-        <button class="btn btn-admin-bottom-right" onclick="triggerAppModalOpen('admin')">Admin Console</button>
+        <main class="hero">
+            <div class="container hero-layout">
+                <div class="hero-text">
+                    <h1>Sow the Seeds of Transparent Kindness</h1>
+                    <p>Kaaryakarni is a robust donation management platform engineered to deliver financial transparency. Support national and worldwide humanitarian programs securely using verified instant multi-channel INR routes today.</p>
+                    <button class="btn btn-primary" style="padding: 14px 28px;" onclick="triggerAppModalOpen('donate')">Donate Now (INR)</button>
+                </div>
+                <div class="hero-art">
+                    <div>
+                        <h3 style="font-size: 22px; font-weight:700; margin-bottom: 10px;">Direct Impact Accounting</h3>
+                        <p style="color: rgba(255,255,255,0.85); font-size: 14px; line-height: 1.5;">Every contribution is validated cleanly and mapped onto immutable internal databases to secure prompt, transparent allocations deployment tracking.</p>
+                    </div>
+                </div>
+            </div>
+        </main>
     </div>
 
     <div id="app-modal-mask" class="modal-mask">
@@ -54,8 +71,8 @@
                     <div id="err-su-mobile" class="error-alert-label">Invalid mobile</div>
                 </div>
                 <div id="su-otp-display-box" class="otp-display-enclosure-box">
-                    <input type="text" id="su-otp-code-input" placeholder="Enter 4-Digit OTP" maxlength="4">
-                    <div id="su-otp-terminal-hint" class="otp-terminal-hint"></div>
+                    <input type="text" id="su-otp-code-input" placeholder="Enter 6-Digit OTP" maxlength="6">
+                    <div id="si-otp-terminal-hint" class="otp-terminal-hint"></div>
                     <div id="err-su-otp" class="error-alert-label">Incorrect OTP</div>
                 </div>
                 <button type="button" onclick="fetchSmsOtpCodeNetwork('su-mobile', 'su-otp-display-box', 'su-otp-terminal-hint', 'su-register-submit-btn')">Send OTP</button>
@@ -73,7 +90,7 @@
                     <div id="err-si-mobile" class="error-alert-label">Invalid mobile</div>
                 </div>
                 <div id="si-otp-display-box" class="otp-display-enclosure-box">
-                    <input type="text" id="si-otp-code-input" placeholder="Enter 4-Digit OTP" maxlength="4">
+                    <input type="text" id="si-otp-code-input" placeholder="Enter 6-Digit OTP" maxlength="6">
                     <div id="si-otp-terminal-hint" class="otp-terminal-hint"></div>
                     <div id="err-si-otp" class="error-alert-label">Incorrect OTP</div>
                 </div>
@@ -105,7 +122,7 @@
                     <input type="number" id="do-amount" value="5000">
                 </div>
                 <div id="do-otp-display-box" class="otp-display-enclosure-box">
-                    <input type="text" id="do-otp-code-input" placeholder="Enter 4-Digit OTP" maxlength="4">
+                    <input type="text" id="do-otp-code-input" placeholder="Enter 6-Digit OTP" maxlength="6">
                     <div id="do-otp-terminal-hint" class="otp-terminal-hint"></div>
                     <div id="err-do-otp" class="error-alert-label">Incorrect OTP</div>
                 </div>

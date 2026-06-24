@@ -1,31 +1,158 @@
 const express = require('express');
 const mysql = require('mysql2/promise');
 const cors = require('cors');
-const path = require('path'); // Add this import
+const path = require('path');
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-// This serves static files from the 'public' folder (or where your index.html is located)
 app.use(express.static(path.join(__dirname, 'public'))); 
 
-
-// Database Connection Configuration
 const dbConfig = {
     host: 'localhost',
     user: 'root',
-    password: 'Minty@0603', // Update with your MySQL password
+    password: 'Minty@0603', 
     database: 'kaaryakarni_db'
 };
 
-// ==================== OTP MANAGEMENT ====================
-// Store OTPs in memory (in production, use Redis or database)
 const otpStore = {};
+// ==================== OTP REQUEST ====================
+app.post('/api/otp/request', async (req, res) => {
+    try {
+        const { targetPhone } = req.body;
+        let fallbackOtp = Math.floor(100000 + Math.random() * 900000).toString();
+        
+        // 1. Validate phone number
+        if (!/^\d{10}$/.test(targetPhone)) {
+            return res.status(400).json({ error: 'Invalid phone number' });
+        }
+        otpStore[targetPhone] = fallbackOtp;
+        
+//        // 2. Call the OTP Provider (using the credentials from your curl command)
+//        try{
+//	        const otpResponse = await fetch('https://api.otp.dev/v1/verifications', {
+//	            method: 'POST',
+//	            headers: {
+//	                'X-OTP-Key': '02eb5b7ee0484adf4afacc5616d76dbd',
+//	                'Accept': 'application/json',
+//	                'Content-Type': 'application/json'
+//	            },
+//	            body: JSON.stringify({
+//	                data: {
+//	                    channel: 'sms',
+//	                    sender: 'd4144733-615f-4f5d-9d64-64c6efb9fc64',
+//	                    phone: `91${targetPhone}`, // Assuming India (+91) based on your context
+//	                    template: '80b609f1-3290-4e3f-aa93-dedfb375073f',
+//	                    code_length: 6
+//	                }
+//	            })
+//	        });
+//
+//	        const result = await otpResponse.json();
+//	        console.log(`${result}`)
+//	        if (!otpResponse.ok) throw new Error("API responded with error");
+//
+//            // If successful, log that we used the API
+//            otpStore[targetPhone] = result.data.code
+//            fallbackOtp = result.data.code
+//            console.log(`[OTP sent via API to ${targetPhone}:${fallbackOtp}]`);
+//        } catch (apiError) {
+//            // FALLBACK LOGIC
+//            console.error(`[OTP API failed, using fallback for ${targetPhone}]:`, apiError.message);
+//
+//            // Store fallback OTP in your memory
+//            otpStore[targetPhone] = fallbackOtp;
+//
+//            // Log for your internal console/debug
+//            console.log(`[Fallback OTP for ${targetPhone}]: ${fallbackOtp}`);
+//        }
+        res.status(200).json({
+            success: true,
+            message: 'OTP request processed',
+            providerResponse: fallbackOtp 
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
 
-function generateOTP() {
-    return Math.floor(1000 + Math.random() * 9000).toString();
-}
+
+// ==================== MEMBER SIGN IN ====================
+app.post('/api/member/signin-verify', async (req, res) => {
+    try {
+        const { mobileNumber, clientOtp } = req.body;
+        
+        // ADD THIS LOG
+    	   console.log(`Mobile=${mobileNumber}, StoredOTP=${otpStore[mobileNumber]}, SentOTP=${clientOtp}`);    	   
+        
+        if (!otpStore[mobileNumber] || otpStore[mobileNumber] !== clientOtp) {
+            return res.status(400).json({ error: 'Invalid OTP' });
+        }
+        
+        const connection = await mysql.createConnection(dbConfig);
+        
+        // Added role_id to the query
+        const query = `SELECT member_id, first_name, last_name, username_or_email, mobile_number, role_id FROM members WHERE mobile_number = ?`;
+        const [rows] = await connection.execute(query, [mobileNumber]);
+        await connection.end();
+        
+        if (rows.length === 0) {
+            return res.status(404).json({ error: 'Member not found' });
+        }
+        
+        const member = rows[0];
+        delete otpStore[mobileNumber];
+        
+        res.status(200).json({
+            success: true,
+            member: {
+                memberId: member.member_id,
+                firstName: member.first_name,
+                lastName: member.last_name,
+                emailId: member.email,
+                mobileNumber: member.mobile_number,
+                roleId: member.role_id // Sent to frontend for UI logic
+            }
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// ==================== ADMIN AUTHENTICATION (Phase 2 - 2FA & Auth) ====================
+app.post('/api/admin/gateway-2fa', async (req, res) => {
+    try {
+        const { userToken2fa, memberId } = req.body; 
+        
+        const connection = await mysql.createConnection(dbConfig);
+        
+        // SECURITY CHECK: Verify if this specific member is an admin
+        const [users] = await connection.execute('SELECT role_id FROM members WHERE member_id = ?', [memberId]);
+        
+        if (users.length === 0 || users[0].role_id !== 1) {
+            await connection.end();
+            return res.status(403).json({ message: 'Access Denied: Admin role required.' });
+        }
+        
+        // Fetch all members and donations only after confirming Admin status
+        const [members] = await connection.execute(`SELECT first_name, last_name, email, mobile_number FROM members`);
+        const [donations] = await connection.execute(`SELECT donor_full_name, donor_email, amount_inr, transaction_timestamp FROM donations`);
+        
+        await connection.end();
+        
+        res.status(200).json({
+            success: true,
+            message: '2FA verification successful',
+            dataLog: {
+                members: members,
+                donations: donations
+            }
+        });
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
 
 // ==================== MEMBER REGISTRATION ====================
 app.post('/api/member/register-account', async (req, res) => {
@@ -39,7 +166,7 @@ app.post('/api/member/register-account', async (req, res) => {
         
         const connection = await mysql.createConnection(dbConfig);
         
-        const query = `INSERT INTO members (first_name, last_name, email, mobile_number) VALUES (?, ?, ?, ?)`;
+        const query = 'INSERT INTO members (first_name, last_name, email, mobile_number) VALUES (?, ?, ?, ?)';
         const [result] = await connection.execute(query, [firstName, lastName, emailId, mobileNumber]);
         await connection.end();
         
@@ -61,73 +188,6 @@ app.post('/api/member/register-account', async (req, res) => {
     }
 });
 
-// ==================== MEMBER SIGN IN ====================
-app.post('/api/member/signin-verify', async (req, res) => {
-    try {
-        const { mobileNumber, clientOtp } = req.body;
-        
-        // Verify OTP
-        if (!otpStore[mobileNumber] || otpStore[mobileNumber] !== clientOtp) {
-            return res.status(400).json({ error: 'Invalid OTP' });
-        }
-        
-        const connection = await mysql.createConnection(dbConfig);
-        
-        const query = `SELECT * FROM members WHERE mobile_number = ?`;
-        const [rows] = await connection.execute(query, [mobileNumber]);
-        await connection.end();
-        
-        if (rows.length === 0) {
-            return res.status(404).json({ error: 'Member not found' });
-        }
-        
-        const member = rows[0];
-        
-        // Clear OTP after successful signin
-        delete otpStore[mobileNumber];
-        
-        res.status(200).json({
-            success: true,
-            member: {
-                memberId: member.member_id,
-                firstName: member.first_name,
-                lastName: member.last_name,
-                emailId: member.email,
-                mobileNumber: member.mobile_number
-            }
-        });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
-
-// ==================== OTP REQUEST ====================
-app.post('/api/otp/request', async (req, res) => {
-    try {
-        const { targetPhone } = req.body;
-        
-        // Validate phone number
-        if (!/^\d{10}$/.test(targetPhone)) {
-            return res.status(400).json({ error: 'Invalid phone number' });
-        }
-        
-        // Generate OTP
-        const otp = generateOTP();
-        otpStore[targetPhone] = otp;
-        
-        // In production, send via SMS service (Twilio, AWS SNS, etc.)
-        // For testing, we return OTP in response
-        console.log(`[OTP for ${targetPhone}]: ${otp}`);
-        
-        res.status(200).json({
-            success: true,
-            activeTokenCode: otp, // For testing only - remove in production
-            message: 'OTP sent successfully'
-        });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
 
 // ==================== DONATION SUBMISSION ====================
 app.post('/api/donation/submit-transaction', async (req, res) => {
@@ -141,7 +201,7 @@ app.post('/api/donation/submit-transaction', async (req, res) => {
         
         const connection = await mysql.createConnection(dbConfig);
         
-        const query = `INSERT INTO donations (donor_full_name, donor_email, donor_mobile, amount_inr) VALUES (?, ?, ?, ?)`;
+        const query = 'INSERT INTO donations (donor_full_name, donor_email, donor_mobile, amount_inr) VALUES (?, ?, ?, ?)';
         const [result] = await connection.execute(query, [fullName, emailId, mobileNumber, amountInr]);
         await connection.end();
         
@@ -166,82 +226,24 @@ app.post('/api/donation/submit-transaction', async (req, res) => {
     }
 });
 
-// ==================== ADMIN AUTHENTICATION (Phase 1) ====================
-app.post('/api/admin/gateway-pass', async (req, res) => {
+// ==================== FETCH MEMBER DONATIONS ====================
+app.get('/api/member/donations/:mobile', async (req, res) => {
     try {
-        const { identity, password } = req.body;
-        
+        const mobile = req.params.mobile;
         const connection = await mysql.createConnection(dbConfig);
         
-        const query = `SELECT * FROM admins WHERE username_or_email = ? AND password_hash = ?`;
-        const [rows] = await connection.execute(query, [identity, password]);
-        await connection.end();
-        
-        if (rows.length === 0) {
-            return res.status(401).json({ message: 'Invalid credentials' });
-        }
-        
-        // Generate 2FA code
-        const admin2faCode = Math.floor(100000 + Math.random() * 900000).toString();
-        otpStore[`2fa_${identity}`] = admin2faCode;
-        
-        console.log(`[2FA Code for ${identity}]: ${admin2faCode}`);
-        
-        res.status(200).json({
-            success: true,
-            message: 'Credentials verified. Please provide 2FA code.',
-            admin2faCode // For testing only - remove in production
-        });
-    } catch (err) {
-        res.status(500).json({ message: err.message });
-    }
-});
-
-// ==================== ADMIN AUTHENTICATION (Phase 2 - 2FA) ====================
-app.post('/api/admin/gateway-2fa', async (req, res) => {
-    try {
-        const { userToken2fa } = req.body;
-        
-        const connection = await mysql.createConnection(dbConfig);
-        
-        // Fetch all members
-        const memberQuery = `SELECT member_id, first_name, last_name, email, mobile_number FROM members`;
-        const [members] = await connection.execute(memberQuery);
-        
-        // Fetch all donations
-        const donationQuery = `SELECT donor_full_name, donor_email, amount_inr, transaction_timestamp FROM donations`;
-        const [donations] = await connection.execute(donationQuery);
+        // Fetch only donations for this mobile number
+        const [donations] = await connection.execute(
+            `SELECT * FROM donations WHERE donor_mobile = ?`, [mobile]
+        );
         
         await connection.end();
-        
-        // Format data for response
-        const memberData = members.map(m => ({
-            firstName: m.first_name,
-            lastName: m.last_name,
-            emailId: m.email,
-            mobileNumber: m.mobile_number
-        }));
-        
-        const donationData = donations.map(d => ({
-            fullName: d.donor_full_name,
-            emailId: d.donor_email,
-            amountInr: parseFloat(d.amount_inr),
-            timestamp: new Date(d.transaction_timestamp).toLocaleString('en-IN', { timeZone: 'IST' })
-        }));
-        
-        res.status(200).json({
-            success: true,
-            message: '2FA verification successful',
-            dataLog: {
-                members: memberData,
-                donations: donationData
-            }
-        });
+        res.json({ success: true, donations });
     } catch (err) {
-        res.status(500).json({ message: err.message });
+        res.status(500).json({ error: err.message });
     }
 });
-
+ 
 // Start Server
 const PORT = 5000;
 app.listen(PORT, () => {

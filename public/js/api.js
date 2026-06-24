@@ -12,24 +12,67 @@ async function apiCall(endpoint, data) {
     return { response, result: await response.json() };
 }
 
-// 1. OTP Request
-export async function fetchSmsOtpCodeNetwork(phoneInputFieldId, displayEnclosureId, hintFieldNodeId, submitActionButtonId) {
-    const mobileNumber = document.getElementById(phoneInputFieldId).value.trim();
-    if (!/^\d{10}$/.test(mobileNumber)) return alert("Invalid 10-digit number.");
-
-    const { response, result } = await apiCall('/api/otp/request', { targetPhone: mobileNumber });
+export async function loadMemberDashboard(mobile) {
+    const res = await fetch(`/api/member/donations/${mobile}`);
+    const data = await res.json();
+    const tbody = document.getElementById('donation-list');
     
-    if (response.ok) {
-        document.getElementById(displayEnclosureId).style.display = 'block';
-        document.getElementById(hintFieldNodeId).innerText = `[Testing Code]: ${result.activeTokenCode}`;
-        const submitBtn = document.getElementById(submitActionButtonId);
-        if (submitBtn) submitBtn.removeAttribute('disabled');
-        alert("OTP Sent! The submission button is now active.");
-    } else {
-        alert(result.error || "Gateway error.");
-    }
+    data.donations.forEach(d => {
+        tbody.innerHTML += `<tr>
+            <td>${new Date(d.transaction_timestamp).toLocaleDateString()}</td>
+            <td>${d.amount_inr}</td>
+            <td><button onclick="downloadReceipt(${d.donation_id})">Download PDF</button></td>
+        </tr>`;
+    });
 }
 
+
+// 1. OTP Request
+export async function fetchSmsOtpCodeNetwork(mobileInputId, otpBoxId, hintId, submitBtnId) {
+    const mobileNumber = document.getElementById(mobileInputId).value;
+    const hintElement = document.getElementById(hintId);
+    const sendOtpBtn = event.target; // The button that was clicked
+    const errorLabel = document.getElementById('err-si-otp'); // Adjust ID as needed
+
+    // 1. Clear previous errors and set UI state
+    errorLabel.style.display = 'none';
+    sendOtpBtn.disabled = true; // Disable "Send OTP" button
+    hintElement.textContent = "Sending OTP...";
+
+    try {
+        const response = await fetch('/api/otp/request', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ targetPhone: mobileNumber })
+        });
+
+        const data = await response.json();
+        if (data.success) {
+	       // 1. Make the OTP input box visible
+	       document.getElementById(otpBoxId).style.display = 'block';
+
+            // 2. NEW: Inject the code directly if it exists
+	       if (data.providerResponse) {
+	           // Assuming the OTP input has ID 'si-otp-code-input'
+	           // You may need to pass the input ID to this function as well
+	           const otpInput = document.getElementById('si-otp-code-input'); 
+	           otpInput.value = data.providerResponse;
+	        }
+
+        // 3. Update the UI hint
+        hintElement.style.color = "blue";
+        hintElement.textContent = "OTP automatically filled.";            
+            // 3. Enable the "Verify" button
+            document.getElementById(submitBtnId).disabled = false;
+        } else {
+            throw new Error(data.error || "Failed to send OTP");
+        }
+    } catch (err) {
+        hintElement.style.color = "red";
+        hintElement.textContent = "Error: Could not send OTP.";
+        sendOtpBtn.disabled = false; // Re-enable if failed
+    }
+}
 // 2. Registration
 export async function executeMemberRegistrationForm(event) {
     event.preventDefault();
@@ -70,8 +113,12 @@ export async function executeMemberSignInVerificationForm(event) {
     
     const { response, result } = await apiCall('/api/member/signin-verify', data);
     if (response.ok) {
-        alert("Login successful!");
-        window.location.reload();
+        // 1. Hide Login Modal
+    	   triggerAppModalsClose();
+    
+    	   // 2. Load and Show Dashboard
+    	   switchActiveSpaRouteView('route-dashboard');
+        loadMemberDashboard(data.mobileNumber);
     } else {
         if (result.error.toLowerCase().includes("otp")) document.getElementById('err-si-otp').style.display = 'block';
         else alert(result.error);
@@ -120,9 +167,7 @@ export async function executeDashboardMemberPaymentProcessRoute() {
     } else {
         alert(result.error || "Payment processing failed.");
     }
-}
-
-// ... Keep Admin and PDF functions as they were ...    
+}   
 
 // Admin functions and PDF export logic...
 export async function executeAdminIdentityPasswordVerification(event) {

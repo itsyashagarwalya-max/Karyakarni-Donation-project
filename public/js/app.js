@@ -12,7 +12,8 @@ import {
     executeDashboardMemberPaymentProcessRoute,
     executeAdminIdentityPasswordVerification,
     executeAdminTwoFactorAuthenticationSubmit,
-    compileAndDownloadPdfStatementReceipt
+    compileAndDownloadPdfStatementReceipt,
+    loadMemberDashboard
 } from './api.js';
 
 // 2. Grant Global Access (Exposes functions to HTML 'onclick' attributes)
@@ -27,6 +28,20 @@ window.executeDashboardMemberPaymentProcessRoute = executeDashboardMemberPayment
 window.executeAdminIdentityPasswordVerification = executeAdminIdentityPasswordVerification;
 window.executeAdminTwoFactorAuthenticationSubmit = executeAdminTwoFactorAuthenticationSubmit;
 window.compileAndDownloadPdfStatementReceipt = compileAndDownloadPdfStatementReceipt;
+// THIS IS THE KEY FIX:
+window.loadMemberDashboard = loadMemberDashboard;
+
+// Add this to your app.js
+window.downloadReceipt = (donationId) => {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    
+    doc.text("Kaaryakarni Donation Receipt", 10, 10);
+    doc.text(`Donation ID: ${donationId}`, 10, 20);
+    doc.text("Thank you for your generous contribution!", 10, 30);
+    
+    doc.save(`receipt_${donationId}.pdf`);
+};
 
 // 3. System Initialization
 document.addEventListener('DOMContentLoaded', () => {
